@@ -1,6 +1,6 @@
 //
 //	ReaderThumbFetch.m
-//	Reader v2.6.1
+//	Reader v2.6.0
 //
 //	Created by Julius Oklamcak on 2011-09-01.
 //	Copyright © 2011-2012 Julius Oklamcak. All rights reserved.
@@ -37,25 +37,29 @@
 
 #pragma mark ReaderThumbFetch instance methods
 
-- (id)initWithRequest:(ReaderThumbRequest *)options
+- (id)initWithRequest:(ReaderThumbRequest *)object
 {
-	if ((self = [super initWithGUID:options.guid]))
+	if ((self = [super initWithGUID:object.guid]))
 	{
-		request = options;
+		request = object;
 	}
 
 	return self;
 }
 
+- (void)dealloc
+{
+	if (request.thumbView.operation == self)
+	{
+		request.thumbView.operation = nil; // Done
+	}
+}
+
 - (void)cancel
 {
-	[super cancel]; // Cancel the operation
-
-	request.thumbView.operation = nil; // Break retain loop
-
-	request.thumbView = nil; // Release target thumb view on cancel
-
 	[[ReaderThumbCache sharedInstance] removeNullForKey:request.cacheKey];
+
+	[super cancel];
 }
 
 - (NSURL *)thumbFileURL
@@ -69,7 +73,9 @@
 
 - (void)main
 {
-	CGImageRef imageRef = NULL; NSURL *thumbURL = [self thumbFileURL];
+	if (self.isCancelled == YES) return;
+
+	NSURL *thumbURL = [self thumbFileURL]; CGImageRef imageRef = NULL;
 
 	CGImageSourceRef loadRef = CGImageSourceCreateWithURL((__bridge CFURLRef)thumbURL, NULL);
 
@@ -89,11 +95,11 @@
 		{
 			request.thumbView.operation = thumbRender; // Update the thumb view operation property to the new operation
 
-			[[ReaderThumbQueue sharedInstance] addWorkOperation:thumbRender]; return; // Queue the operation
+			[[ReaderThumbQueue sharedInstance] addWorkOperation:thumbRender]; // Queue the operation
 		}
 	}
 
-	if (imageRef != NULL) // Create a UIImage from a CGImage and show it
+	if (imageRef != NULL) // Create UIImage from CGImage and show it
 	{
 		UIImage *image = [UIImage imageWithCGImage:imageRef scale:request.scale orientation:UIImageOrientationUp];
 
@@ -107,7 +113,7 @@
 
 		UIGraphicsEndImageContext(); // Cleanup after the bitmap-based graphics drawing context
 
-		[[ReaderThumbCache sharedInstance] setObject:decoded forKey:request.cacheKey]; // Cache it
+		[[ReaderThumbCache sharedInstance] setObject:decoded forKey:request.cacheKey]; // Update cache
 
 		if (self.isCancelled == NO) // Show the image in the target thumb view on the main thread
 		{
@@ -121,8 +127,6 @@
 			});
 		}
 	}
-
-	request.thumbView.operation = nil; // Break retain loop
 }
 
 @end

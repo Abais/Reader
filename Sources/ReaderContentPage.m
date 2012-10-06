@@ -1,6 +1,6 @@
 //
 //	ReaderContentPage.m
-//	Reader v2.6.1
+//	Reader v2.6.0
 //
 //	Created by Julius Oklamcak on 2011-07-01.
 //	Copyright © 2011-2012 Julius Oklamcak. All rights reserved.
@@ -131,7 +131,7 @@
 
 		CGRect viewRect = CGRectMake(vr_x, vr_y, vr_w, vr_h); // View CGRect from PDFRect
 
-		documentLink = [ReaderDocumentLink newWithRect:viewRect dictionary:annotationDictionary];
+		documentLink = [ReaderDocumentLink withRect:viewRect dictionary:annotationDictionary];
 	}
 
 	return documentLink;
@@ -531,11 +531,9 @@
 
 - (void)drawLayer:(CATiledLayer *)layer inContext:(CGContextRef)context
 {
-	ReaderContentPage *readerContentPage = self; // Retain self
+	CGPDFPageRef drawPDFPageRef = NULL;
 
-	CGPDFPageRef drawPDFPageRef = NULL; // Document page reference
-
-	CGPDFDocumentRef drawPDFDocRef = NULL; // Document reference
+	CGPDFDocumentRef drawPDFDocRef = NULL;
 
 	@synchronized(self) // Block any other threads
 	{
@@ -544,11 +542,11 @@
 		drawPDFPageRef = CGPDFPageRetain(_PDFPageRef);
 	}
 
+	//NSLog(@"%s %@", __FUNCTION__, NSStringFromCGRect(CGContextGetClipBoundingBox(context)));
+
 	CGContextSetRGBFillColor(context, 1.0f, 1.0f, 1.0f, 1.0f); // White
 
 	CGContextFillRect(context, CGContextGetClipBoundingBox(context)); // Fill
-
-	//NSLog(@"%s %@", __FUNCTION__, NSStringFromCGRect(CGContextGetClipBoundingBox(context)));
 
 	if (drawPDFPageRef != NULL) // Go ahead and render the PDF page into the context
 	{
@@ -562,8 +560,6 @@
 	}
 
 	CGPDFPageRelease(drawPDFPageRef); CGPDFDocumentRelease(drawPDFDocRef); // Cleanup
-
-	if (readerContentPage != nil) readerContentPage = nil; // Release self
 }
 
 @end
@@ -588,7 +584,7 @@
 
 #pragma mark ReaderDocumentLink class methods
 
-+ (id)newWithRect:(CGRect)linkRect dictionary:(CGPDFDictionaryRef)linkDictionary
++ (id)withRect:(CGRect)linkRect dictionary:(CGPDFDictionaryRef)linkDictionary
 {
 	return [[ReaderDocumentLink alloc] initWithRect:linkRect dictionary:linkDictionary];
 }

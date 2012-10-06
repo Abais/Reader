@@ -1,6 +1,6 @@
 //
 //	ReaderThumbView.h
-//	Reader v2.6.1
+//	Reader v2.6.0
 //
 //	Created by Julius Oklamcak on 2011-09-01.
 //	Copyright © 2011-2012 Julius Oklamcak. All rights reserved.
@@ -32,7 +32,7 @@
 	UIImageView *imageView;
 }
 
-@property (atomic, strong, readwrite) NSOperation *operation;
+@property (unsafe_unretained, readwrite) NSOperation *operation;
 
 @property (nonatomic, assign, readwrite) NSUInteger targetTag;
 
