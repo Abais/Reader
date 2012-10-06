@@ -508,20 +508,14 @@
 	return view;
 }
 
-- (void)removeFromSuperview
-{
-	self.layer.delegate = nil;
-
-	//self.layer.contents = nil;
-
-	[super removeFromSuperview];
-}
-
 - (void)dealloc
 {
-	CGPDFPageRelease(_PDFPageRef), _PDFPageRef = NULL;
+	@synchronized(self) // Block any other threads
+	{
+		CGPDFPageRelease(_PDFPageRef), _PDFPageRef = NULL;
 
-	CGPDFDocumentRelease(_PDFDocRef), _PDFDocRef = NULL;
+		CGPDFDocumentRelease(_PDFDocRef), _PDFDocRef = NULL;
+	}
 }
 
 #if (READER_DISABLE_RETINA == TRUE) // Option
@@ -539,19 +533,35 @@
 {
 	ReaderContentPage *readerContentPage = self; // Retain self
 
+	CGPDFPageRef drawPDFPageRef = NULL; // Document page reference
+
+	CGPDFDocumentRef drawPDFDocRef = NULL; // Document reference
+
+	@synchronized(self) // Block any other threads
+	{
+		drawPDFDocRef = CGPDFDocumentRetain(_PDFDocRef);
+
+		drawPDFPageRef = CGPDFPageRetain(_PDFPageRef);
+	}
+
 	CGContextSetRGBFillColor(context, 1.0f, 1.0f, 1.0f, 1.0f); // White
 
 	CGContextFillRect(context, CGContextGetClipBoundingBox(context)); // Fill
 
 	//NSLog(@"%s %@", __FUNCTION__, NSStringFromCGRect(CGContextGetClipBoundingBox(context)));
 
-	CGContextTranslateCTM(context, 0.0f, self.bounds.size.height); CGContextScaleCTM(context, 1.0f, -1.0f);
+	if (drawPDFPageRef != NULL) // Go ahead and render the PDF page into the context
+	{
+		CGContextTranslateCTM(context, 0.0f, self.bounds.size.height); CGContextScaleCTM(context, 1.0f, -1.0f);
 
-	CGContextConcatCTM(context, CGPDFPageGetDrawingTransform(_PDFPageRef, kCGPDFCropBox, self.bounds, 0, true));
+		CGContextConcatCTM(context, CGPDFPageGetDrawingTransform(drawPDFPageRef, kCGPDFCropBox, self.bounds, 0, true));
 
-	//CGContextSetRenderingIntent(context, kCGRenderingIntentDefault); CGContextSetInterpolationQuality(context, kCGInterpolationDefault);
+		//CGContextSetRenderingIntent(context, kCGRenderingIntentDefault); CGContextSetInterpolationQuality(context, kCGInterpolationDefault);
 
-	CGContextDrawPDFPage(context, _PDFPageRef); // Render the PDF page into the context
+		CGContextDrawPDFPage(context, drawPDFPageRef); // Render the PDF page into the context
+	}
+
+	CGPDFPageRelease(drawPDFPageRef); CGPDFDocumentRelease(drawPDFDocRef); // Cleanup
 
 	if (readerContentPage != nil) readerContentPage = nil; // Release self
 }
